@@ -1,39 +1,82 @@
-# Product Service (Bài thực hành 3 - SOA NestJS)
+# BÁO CÁO BÀI THỰC HÀNH SỐ 3
 
-Dịch vụ quản lý sản phẩm, chạy cổng 3001, database riêng product_db.
-Xác thực bằng cách gọi dịch vụ ở bài thực hành 2 (POST /auth, cổng 3000).
+## Xây dựng dịch vụ quản lý sản phẩm (Product Management)
 
-## Cài đặt
+## 1. Mục tiêu
 
-1. `npm install`
-2. Tạo database: chạy file database/product_db.sql trong MySQL
-3. Copy `.env.example` thành `.env` rồi điền mật khẩu MySQL
-4. Chạy dịch vụ bài 2 (cổng 3000) trước
-5. `npm run start:dev`
+- Xây dựng dịch vụ quản lý sản phẩm (tạo, xem, cập nhật, xóa).
+- Dịch vụ chạy độc lập trên một cổng và cơ sở dữ liệu riêng (theo nguyên tắc SOA).
+- Xác thực thông qua dịch vụ đã xây dựng ở bài thực hành số 2.
 
-## API
+## 2. Công nghệ
 
-Cần header `Authorization: Bearer <token>`
+NestJS (TypeScript), MySQL, TypeORM, Postman.
 
-- GET /products
-- GET /products/:id
-- POST /products
-- PUT /products/:id
-- DELETE /products/:id
+## 3. Tính độc lập của dịch vụ
 
-## SQL
+| Dịch vụ          | Cổng | Cơ sở dữ liệu                   |
+| ---------------- | ---- | ------------------------------- |
+| Xác thực (bài 2) | 3000 | Database của bài 2 (bảng users) |
+| Sản phẩm (bài 3) | 3001 | product_db (bảng products)      |
 
-```sql
-CREATE DATABASE product_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE product_db;
+- Cổng riêng: cấu hình `PORT=3001` trong `.env`, dùng ở `main.ts`.
+- Cơ sở dữ liệu riêng: kết nối `product_db` trong `app.module.ts`, chỉ làm việc với bảng `products`.
+- Hai dịch vụ chỉ giao tiếp qua API HTTP, không chia sẻ mã nguồn hay dữ liệu.
 
-CREATE TABLE products (
-  id          INT AUTO_INCREMENT PRIMARY KEY,
-  name        VARCHAR(255)   NOT NULL,
-  description TEXT,
-  price       DECIMAL(10, 2) NOT NULL,
-  quantity    INT            NOT NULL DEFAULT 0,
-  created_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-```
+## 4. Cơ sở dữ liệu
+
+Bảng `products` trong `product_db` (script: [database/product_db.sql](database/product_db.sql)):
+
+| Tên cột     | Kiểu dữ liệu      | Mô tả                    |
+| ----------- | ----------------- | ------------------------ |
+| id          | INT (PRIMARY KEY) | ID duy nhất của sản phẩm |
+| name        | VARCHAR(255)      | Tên sản phẩm             |
+| description | TEXT              | Mô tả sản phẩm           |
+| price       | DECIMAL(10, 2)    | Giá sản phẩm             |
+| quantity    | INT               | Số lượng trong kho       |
+| created_at  | TIMESTAMP         | Ngày tạo                 |
+| updated_at  | TIMESTAMP         | Ngày cập nhật lần cuối   |
+
+## 5. RESTful API
+
+| Phương thức | Đường dẫn     | Chức năng                 |
+| ----------- | ------------- | ------------------------- |
+| GET         | /products     | Lấy danh sách sản phẩm    |
+| GET         | /products/:id | Lấy chi tiết một sản phẩm |
+| POST        | /products     | Thêm sản phẩm mới         |
+| PUT         | /products/:id | Cập nhật sản phẩm         |
+| DELETE      | /products/:id | Xóa sản phẩm              |
+
+Tất cả API yêu cầu header `Authorization: Bearer <token>`.
+
+## 6. Xác thực qua dịch vụ bài 2
+
+`AuthMiddleware` (`src/auth/auth.middleware.ts`) được gắn cho các route `/products`. Với mỗi yêu cầu, middleware gọi `POST http://localhost:3000/auth` sang dịch vụ bài 2 để kiểm tra token:
+
+- Hợp lệ: cho đi tiếp tới Controller.
+- Không có token hoặc token sai: trả về 401.
+- Không kết nối được dịch vụ xác thực: trả về 503.
+
+Dịch vụ sản phẩm không giữ khóa bí mật JWT và không tự giải mã token.
+
+## 7. Kết quả kiểm thử (Postman)
+
+| Trường hợp            | Kết quả |
+| --------------------- | ------- |
+| POST /products hợp lệ | 201     |
+| GET /products         | 200     |
+| GET /products/1       | 200     |
+| PUT /products/1       | 200     |
+| DELETE /products/1    | 200     |
+| Không có token        | 401     |
+| Token sai             | 401     |
+| GET /products/999     | 404     |
+| POST với price âm     | 400     |
+
+![Tạo sản phẩm](docs/01-post-products.png)
+![Danh sách sản phẩm](docs/02-get-products.png)
+![Không có token](docs/03-no-token.png)
+
+## 8. Kết luận
+
+Đã xây dựng dịch vụ quản lý sản phẩm với đủ 5 API, chạy độc lập ở cổng 3001 với cơ sở dữ liệu riêng, và xác thực bằng cách gọi dịch vụ ở bài thực hành số 2 qua HTTP.
