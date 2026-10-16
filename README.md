@@ -6,7 +6,7 @@ Xác thực bằng cách gọi dịch vụ ở bài thực hành 2 (POST /auth, 
 ## Cài đặt
 
 1. `npm install`
-2. Tạo database: chạy đoạn SQL ở mục SQL bên dưới
+2. Tạo database: chạy file database/product_db.sql trong MySQL
 3. Copy `.env.example` thành `.env` rồi điền mật khẩu MySQL
 4. Chạy dịch vụ bài 2 (cổng 3000) trước
 5. `npm run start:dev`
